@@ -3,167 +3,257 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kabozha Bry — контроллер пивоварни на ESP32</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%23F5A13D'/%3E%3Cpath d='M10 40 a26 26 0 0 1 44 0 z' fill='%231E1B18'/%3E%3C/svg%3E">
+<title>Kabozha Bry — контроллер пивоварни и перегонки на ESP32</title>
+<meta name="description" content="Kabozha Bry — самодельный контроллер пивоварни и перегонки на ESP32: затирание, ТЭН, насос, датчики DS18B20. Дневник проекта из ст. Кабожа.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23F5A13D'/%3E%3Ccircle cx='26' cy='24' r='3' fill='%231E1B18'/%3E%3Ccircle cx='38' cy='20' r='2' fill='%231E1B18'/%3E%3Ccircle cx='42' cy='30' r='2.5' fill='%231E1B18'/%3E%3Ccircle cx='33' cy='33' r='2' fill='%231E1B18'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#1E1B18; --panel:#282420; --panel2:#322D28;
-    --amber:#F5A13D; --text:#EDE7DE; --muted:#9A9188;
-    --line:#3A342E; --green:#7BC47F;
+  :root {
+    --bg: #1E1B18;
+    --panel: #2A2622;
+    --border: #3A342E;
+    --accent: #F5A13D;
+    --accent-dim: #C77F2A;
+    --text: #E8E3DC;
+    --muted: #9A9288;
+    --green: #7BC96F;
   }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    background-color:var(--bg);
-    background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.028) 0 2px, transparent 2px 90px);
-    color:var(--text);
-    font-family:'Segoe UI', Roboto, Arial, sans-serif;
-    line-height:1.6;
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.6;
+    padding: 0 16px 48px;
   }
-  .wrap{max-width:900px; margin:0 auto; padding:0 20px;}
-
-  /* ---------- Баннер ---------- */
-  header{
-    background:linear-gradient(180deg, #221F1B, #1B1916);
-    border-bottom:1px solid var(--line);
-    padding:36px 0 30px;
+  /* диагональная штриховка как на карточке Дзена */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(115deg, transparent 0 46px, rgba(255,255,255,0.025) 46px 52px);
+    pointer-events: none;
+    z-index: 0;
   }
-  .banner{display:flex; align-items:center; gap:36px; flex-wrap:wrap;}
-  .banner-txt{flex:1 1 340px;}
-  .banner-txt h1{color:var(--amber); font-size:52px; line-height:1.05; letter-spacing:.5px;}
-  .banner-txt p{margin-top:10px; font-size:20px; color:var(--text);}
-  .banner-txt small{display:block; margin-top:8px; color:var(--muted); font-size:14px;}
-  .moon{flex:0 0 150px; width:150px; height:150px; border-radius:50%;
-    background:radial-gradient(circle at 62% 34%, #F7B25B 0 58%, #F5A13D 58% 100%);
-    position:relative; overflow:hidden;
-    box-shadow:0 0 0 4px rgba(245,161,61,.25);}
-  .moon::before{content:""; position:absolute; left:-20%; bottom:-58%; width:140%; height:80%;
-    background:#15120F; border-radius:50% 50% 0 0;}
-  .bubble{position:absolute; border:2px solid rgba(255,255,255,.85); border-radius:50%;}
-  .b1{width:10px;height:10px; top:38%; left:62%;}
-  .b2{width:7px;height:7px; top:30%; left:74%;}
-  .b3{width:5px;height:5px; top:46%; left:50%;}
-  .b4{width:8px;height:8px; top:50%; left:70%;}
-  .b5{width:6px;height:6px; top:56%; left:60%;}
-  .b6{width:4px;height:4px; top:26%; left:58%;}
+  .wrap { max-width: 880px; margin: 0 auto; position: relative; z-index: 1; }
 
-  /* ---------- Секции ---------- */
-  section{padding:34px 0 10px;}
-  h2{color:var(--amber); font-size:26px; margin-bottom:14px;}
-  p.lead{color:var(--text); max-width:760px;}
-  a{color:var(--amber); text-decoration:none; border-bottom:1px solid rgba(245,161,61,.4);}
-  a:hover{border-bottom-color:var(--amber);}
+  header.banner {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-top: 24px;
+    padding: 36px 32px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .banner-text { flex: 1; }
+  .banner h1 {
+    color: var(--accent);
+    font-size: 52px;
+    line-height: 1.05;
+    font-weight: 800;
+  }
+  .banner .sub { margin-top: 12px; font-size: 20px; color: var(--text); }
+  .banner .meta { margin-top: 6px; font-size: 14px; color: var(--muted); }
+  .moon {
+    width: 150px; height: 150px; border-radius: 50%;
+    background: var(--accent);
+    position: relative; flex-shrink: 0;
+    border: 2px solid var(--accent-dim);
+    overflow: hidden;
+  }
+  .moon::after {
+    content: "";
+    position: absolute; left: -12%; right: -12%; bottom: -32%;
+    height: 62%; background: var(--panel); border-radius: 50%;
+  }
+  .moon span {
+    position: absolute; border: 1.5px solid rgba(30,27,24,0.55);
+    border-radius: 50%;
+  }
 
-  /* ---------- Этапы ---------- */
-  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:6px;}
-  .step{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px;}
-  .step h3{color:var(--amber); font-size:16px; margin-bottom:6px;}
-  .step .st{font-size:14px;}
-  .st.done{color:var(--green);}
-  .st.wait{color:var(--muted);}
+  h2 {
+    color: var(--accent);
+    font-size: 26px;
+    margin: 40px 0 14px;
+  }
+  section p { color: var(--text); max-width: 720px; }
+  a { color: var(--accent); }
 
-  /* ---------- Фото ---------- */
-  .photos{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:8px;}
-  .ph{border:1px dashed var(--line); border-radius:10px; min-height:140px;
-    display:flex; align-items:center; justify-content:center; text-align:center;
-    color:var(--muted); font-size:14px; padding:16px; background:rgba(255,255,255,.015);}
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 16px; }
+  .step {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .step h3 { color: var(--accent); font-size: 16px; margin-bottom: 6px; }
+  .step .done { color: var(--green); font-size: 14px; }
+  .step .wait { color: var(--muted); font-size: 14px; }
+  .step p { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
-  /* ---------- Счётчик ---------- */
-  .counter{background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:28px 24px; margin-top:8px;}
-  .counter .num{color:var(--amber); font-size:72px; font-weight:700; line-height:1;}
-  .counter .cap{margin-top:10px; color:var(--muted); font-size:15px;}
+  .howto {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .howto code { color: var(--accent); background: rgba(245,161,61,0.08); padding: 1px 6px; border-radius: 4px; }
 
-  /* ---------- Ссылки проекта ---------- */
-  .links{display:flex; gap:14px; flex-wrap:wrap; margin-top:6px;}
-  .btn{background:var(--panel2); border:1px solid var(--line); border-radius:8px;
-    padding:10px 18px; color:var(--text); font-size:15px; border-bottom:none;}
-  .btn:hover{border-color:var(--amber);}
+  .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
+  .ph {
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    min-height: 140px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.015);
+  }
+  .ph img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
 
-  footer{margin-top:40px; padding:26px 0 34px; border-top:1px solid var(--line);
-    text-align:center; color:var(--muted); font-size:14px;}
+  .counter {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-top: 16px;
+  }
+  .counter .num { color: var(--accent); font-size: 72px; font-weight: 800; line-height: 1; }
+  .counter .cap { color: var(--text); margin-top: 10px; }
+  .counter .note { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
-  @media (max-width:560px){
-    .banner-txt h1{font-size:38px;}
-    .moon{flex-basis:110px; width:110px; height:110px;}
+  .links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+  .btn {
+    display: inline-block;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    background: transparent;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn:hover { background: var(--accent); color: var(--bg); }
+  .btn.primary { background: var(--accent); color: var(--bg); }
+  .btn.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
+
+  footer {
+    margin-top: 48px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  @media (max-width: 640px) {
+    header.banner { flex-direction: column-reverse; text-align: center; padding: 28px 20px; }
+    .banner h1 { font-size: 40px; }
+    .moon { width: 110px; height: 110px; }
   }
 </style>
 </head>
 <body>
-
-<header>
-  <div class="wrap banner">
-    <div class="banner-txt">
-      <h1>Kabozha Bry</h1>
-      <p>Контроллер пивоварни и перегонки на ESP32</p>
-      <small>ст. Кабожа, Новгородская область &nbsp;·&nbsp; #kabozhabry</small>
-    </div>
-    <div class="moon">
-      <span class="bubble b1"></span><span class="bubble b2"></span>
-      <span class="bubble b3"></span><span class="bubble b4"></span>
-      <span class="bubble b5"></span><span class="bubble b6"></span>
-    </div>
-  </div>
-</header>
-
 <div class="wrap">
 
-<section>
-  <h2>Что это</h2>
-  <p class="lead">Контроллер на ESP32: измеряет температуру затора, управляет ТЭН и насосом,
-  показывает график варки в браузере.</p>
-</section>
+  <header class="banner">
+    <div class="banner-text">
+      <h1>Kabozha<br>Bry</h1>
+      <div class="sub">Контроллер пивоварни и перегонки на ESP32</div>
+      <div class="meta">ст. Кабожа, Новгородская область &nbsp;·&nbsp; #kabozhabry</div>
+    </div>
+    <div class="moon" aria-hidden="true">
+      <span style="width:6px;height:6px;left:22%;top:20%"></span>
+      <span style="width:4px;height:4px;left:40%;top:14%"></span>
+      <span style="width:9px;height:9px;left:55%;top:34%"></span>
+      <span style="width:5px;height:5px;left:66%;top:26%"></span>
+      <span style="width:5px;height:5px;left:30%;top:40%"></span>
+      <span style="width:4px;height:4px;left:48%;top:46%"></span>
+      <span style="width:4px;height:4px;left:74%;top:44%"></span>
+    </div>
+  </header>
 
-<section>
-  <h2>Схема и код</h2>
-  <p class="lead">Все исходники и схемы — в <a href="https://github.com/kamalek/brewery-esp32">репозитории GitHub</a>.</p>
-</section>
+  <section>
+    <h2>Что это</h2>
+    <p>Контроллер на ESP32: измеряет температуру затора, управляет ТЭН и насосом, показывает график варки в браузере.</p>
+  </section>
 
-<section>
-  <h2>Ход работы</h2>
-  <div class="steps">
-    <div class="step"><h3>1. Сайт проекта</h3><div class="st done">Готово — вы на нём сейчас</div></div>
-    <div class="step"><h3>2. Прошивка ESP32</h3><div class="st wait">Скетч откомпилирован, ожидается железо и посылка</div></div>
-    <div class="step"><h3>3. Первый датчик DS18B20</h3><div class="st wait">Ожидается железо</div></div>
-    <div class="step"><h3>4. Реле ТЭН и насос</h3><div class="st wait">Планируется</div></div>
-    <div class="step"><h3>5. Первая варка по профилю</h3><div class="st wait">Планируется</div></div>
-  </div>
-</section>
+  <section>
+    <h2>Схема и код</h2>
+    <p>Все исходники и схемы — в <a href="https://github.com/kamalek/brewery-esp32">репозитории GitHub</a>.</p>
+  </section>
 
-<section>
-  <h2>Фотографии</h2>
-  <p class="lead" style="font-size:14px; color:var(--muted);">Появятся по мере сборки. Чтобы вставить фото: загрузите картинку в папку docs репозитория и замените подпись в этом блоке на тег &lt;img src="имя_файла.jpg"&gt;.</p>
-  <div class="photos">
-    <div class="ph">Фото: место под посылку с железом</div>
-    <div class="ph">Фото: макетка с ESP32</div>
-    <div class="ph">Фото: куб с датчиком температуры</div>
-  </div>
-</section>
+  <section>
+    <h2>Ход работы</h2>
+    <div class="steps">
+      <div class="step">
+        <h3>1. Сайт проекта</h3>
+        <div class="done">Готово — вы на нём сейчас</div>
+      </div>
+      <div class="step">
+        <h3>2. Прошивка ESP32</h3>
+        <div class="wait">Скетч откомпилирован.<br>Ожидается железо и посылка</div>
+      </div>
+      <div class="step">
+        <h3>3. Первый датчик DS18B20</h3>
+        <div class="wait">Датчики уже приехали,<br>ожидается плата</div>
+      </div>
+      <div class="step">
+        <h3>4. Реле ТЭН и насос</h3>
+        <div class="wait">Планируется</div>
+      </div>
+      <div class="step">
+        <h3>5. Первая варка по профилю</h3>
+        <div class="wait">Планируется</div>
+      </div>
+    </div>
+  </section>
 
-<section>
-  <h2>Счётчик варок</h2>
-  <div class="counter">
-    <div class="num">0</div>
-    <div class="cap">варок завершено.<br>Счётчик оживёт, когда контроллер начнёт отдавать данные — после первой прошивки и подключения датчиков.</div>
-  </div>
-</section>
+  <section>
+    <h2>Фотографии</h2>
+    <p>Появятся по мере сборки. Чтобы вставить фото: загрузите картинку в папку <code>docs</code> репозитория и замените подсказку в этом блоке на тег <code>&lt;img src="имя_файла.jpg"&gt;</code>.</p>
+    <div class="photos">
+      <div class="ph">Фото: место под посылку с железом</div>
+      <div class="ph">Фото: макетка с ESP32</div>
+      <div class="ph">Фото: куб с датчиком температуры</div>
+    </div>
+  </section>
 
-<section>
-  <h2>Проект в сети</h2>
-  <div class="links">
-    <a class="btn" href="https://github.com/kamalek/brewery-esp32">Код на GitHub</a>
-    <a class="btn" href="https://t.me/AV5940">Написать автору в Telegram</a>
-    <a class="btn" href="https://dzen.ru/9517205978">Блог проекта на Дзене</a>
-  </div>
-</section>
+  <section>
+    <h2>Счётчик варок</h2>
+    <div class="counter">
+      <div class="num">0</div>
+      <div class="cap">варок завершено.</div>
+      <div class="note">Счётчик оживёт, когда контроллер начнёт отдавать данные — после первой прошивки и подключения датчиков.</div>
+    </div>
+  </section>
 
-<section>
-  <h2>Заказать модуль</h2>
-  <p class="lead">Раздел появится позже — пишите в Telegram: <a href="https://t.me/AV5940">@AV5940</a></p>
-</section>
+  <section>
+    <h2>Проект в сети</h2>
+    <div class="links">
+      <a class="btn" href="https://github.com/kamalek/brewery-esp32">Код на GitHub</a>
+      <a class="btn primary" href="https://t.me/Sanek53rusA/77">Канал «Пивоварня с нуля»</a>
+      <a class="btn" href="https://dzen.ru/9517205978">Блог проекта на Дзене</a>
+      <a class="btn" href="https://t.me/AV5940">Написать автору в Telegram</a>
+    </div>
+  </section>
 
-<footer>
-  Kabozha Bry · открытый проект · #kabozhabry
-</footer>
+  <section>
+    <h2>Заказать модуль</h2>
+    <p>Раздел появится позже — пишите в Telegram: <a href="https://t.me/AV5940">@AV5940</a></p>
+  </section>
+
+  <footer>
+    Kabozha Bry &nbsp;·&nbsp; открытый проект &nbsp;·&nbsp; #kabozhabry
+  </footer>
 
 </div>
 </body>
