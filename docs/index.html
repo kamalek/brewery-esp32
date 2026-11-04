@@ -1,30 +1,175 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Пивоварня на ESP32</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #1e1e2e; color: #eee; }
-    header { background: #2d2d44; padding: 40px 20px; text-align: center; }
-    main { max-width: 800px; margin: 0 auto; padding: 20px; }
-    a { color: #89b4fa; }
-    h1, h2 { color: #cba6f7; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kabozha Bry — Пивоварня на ESP32</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23F5A13D'/><path d='M5 62 A45 45 0 0 0 95 62 L95 95 L5 95 Z' fill='%231E1B18'/></svg>">
+<style>
+  :root {
+    --bg: #1E1B18;
+    --panel: #262220;
+    --accent: #F5A13D;
+    --text: #E8E4DF;
+    --muted: #9B938A;
+    --line: #3A3430;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 90px),
+      var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); }
+
+  /* ---- Шапка-баннер в стиле карточки Kabozha Bry ---- */
+  .banner {
+    max-width: 1000px;
+    margin: 24px auto 0;
+    padding: 48px 40px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .banner h1 {
+    color: var(--accent);
+    font-size: 64px;
+    line-height: 1.05;
+    letter-spacing: 1px;
+  }
+  .banner .sub {
+    color: var(--text);
+    font-size: 22px;
+    margin-top: 16px;
+  }
+  .banner .geo {
+    color: var(--muted);
+    font-size: 15px;
+    margin-top: 6px;
+  }
+  .moon { flex-shrink: 0; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 60px; }
+  h2 { color: var(--accent); font-size: 26px; margin: 40px 0 10px; }
+  p { margin: 8px 0; }
+
+  /* ---- Карточки шагов ---- */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+  .step {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .step b { color: var(--accent); }
+  .step .done { color: #7CBF6E; font-size: 14px; }
+  .step .wait { color: var(--muted); font-size: 14px; }
+
+  /* ---- Место под фото ---- */
+  .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 16px; }
+  .ph {
+    border: 2px dashed var(--line);
+    border-radius: 12px;
+    min-height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 16px;
+  }
+  .ph img { max-width: 100%; border-radius: 8px; }
+
+  /* ---- Счётчик варок ---- */
+  .counter {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .counter .num { color: var(--accent); font-size: 56px; font-weight: 700; }
+  .counter .cap { color: var(--muted); }
+
+  footer { text-align: center; color: var(--muted); font-size: 14px; padding: 30px 16px 40px; }
+</style>
 </head>
 <body>
-  <header>
-    <h1>Пивоварня на ESP32</h1>
-    <p>Открытый проект автоматизации домашней пивоварни</p>
-  </header>
-  <main>
-    <h2>Что это</h2>
-    <p>Контроллер на ESP32: измеряет температуру затора, управляет ТЭН и насосом,
-       показывает график варки в браузере.</p>
-    <h2>Схема и код</h2>
-    <p>Все исходники и схемы — в <a href="https://github.com/kamalek/brewery-esp32">репозитории GitHub</a>
-    <h2>Заказать модуль</h2>
-    <p>Раздел появится позже — пишите в Telegram: @AV5940</p>
-  </main>
+
+<!-- ==================== БАННЕР ==================== -->
+<div class="banner">
+  <div>
+    <h1>Kabozha<br>Bry</h1>
+    <div class="sub">Контроллер пивоварни и перегонки на ESP32</div>
+    <div class="geo">ст. Кабожа, Новгородская область &nbsp;&middot;&nbsp; #kabozhabry</div>
+  </div>
+  <svg class="moon" width="180" height="180" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="90" fill="#F5A13D" stroke="#F5A13D" stroke-width="4"/>
+    <path d="M10 128 A92 92 0 0 0 190 128 L190 200 L10 200 Z" fill="#262220"/>
+    <circle cx="70" cy="60" r="4" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="92" cy="50" r="3" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="120" cy="70" r="5" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="105" cy="88" r="3" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="80" cy="92" r="6" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="140" cy="95" r="3" fill="none" stroke="#F5A13D" stroke-width="2"/>
+    <circle cx="95" cy="105" r="4" fill="none" stroke="#F5A13D" stroke-width="2"/>
+  </svg>
+</div>
+
+<main>
+
+<!-- ==================== ЧТО ЭТО ==================== -->
+<h2>Что это</h2>
+<p>Контроллер на ESP32: измеряет температуру затора, управляет ТЭН и насосом, показывает график варки в браузере.</p>
+
+<!-- ==================== СХЕМА И КОД ==================== -->
+<h2>Схема и код</h2>
+<p>Все исходники и схемы — в <a href="https://github.com/kamalek/brewery-esp32">репозитории GitHub</a>.</p>
+
+<!-- ==================== ХОД РАБОТЫ ==================== -->
+<h2>Ход работы</h2>
+<div class="steps">
+  <div class="step"><b>1. Сайт проекта</b><br><span class="done">Готово — вы на нём сейчас</span></div>
+  <div class="step"><b>2. Прошивка ESP32</b><br><span class="done">Скетч скомпилирован</span><br><span class="wait">Ожидается железо из посылки</span></div>
+  <div class="step"><b>3. Первый датчик DS18B20</b><br><span class="wait">Ожидается железо</span></div>
+  <div class="step"><b>4. Реле: ТЭН и насос</b><br><span class="wait">Планируется</span></div>
+  <div class="step"><b>5. Первая варка по профилю</b><br><span class="wait">Планируется</span></div>
+</div>
+
+<h2>Фотографии</h2>
+<p>Появятся по мере сборки. Чтобы вставить фото: загрузите картинку в папку docs репозитория и замените подсказку в этом блоке на тег &lt;img src="имя_файла.jpg"&gt;.</p>
+<div class="photos">
+  <div class="ph">Фото: место под посылку с железом</div>
+  <div class="ph">Фото: макетка с ESP32</div>
+  <div class="ph">Фото: куб и датчик температуры</div>
+</div>
+
+<!-- ==================== СЧЁТЧИК ВАРОК ==================== -->
+<h2>Счётчик варок</h2>
+<div class="counter">
+  <div class="num">0</div>
+  <div class="cap">варок завершено.<br>Счётчик заработает, когда контроллер начнёт отдавать данные — после первой прошивки и подключения датчиков.</div>
+</div>
+
+<!-- ==================== ЗАКАЗАТЬ МОДУЛЬ ==================== -->
+<h2>Заказать модуль</h2>
+<p>Раздел появится позже — пишите в Telegram: <a href="https://t.me/AV5940">@AV5940</a></p>
+
+</main>
+
+<footer>Kabozha Bry &middot; открытый проект &middot; #kabozhabry</footer>
+
 </body>
 </html>
